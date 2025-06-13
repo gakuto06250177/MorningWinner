@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { AttendanceStatus } from '@/types';
 import { useLocalStorageData } from '@/hooks/useLocalStorageData';
 import { useSupabaseData } from '@/hooks/useSupabaseData';
+import { SunriseLoadingScreen } from '@/components/SunriseLoading';
 
 // Check if Supabase is configured
 const isSupabaseConfigured = () => {
@@ -20,6 +21,8 @@ export default function Home() {
     new Date().toISOString().split('T')[0]
   );
   const [editingMember, setEditingMember] = useState<string | null>(null);
+  const [showSunriseLoading, setShowSunriseLoading] = useState(true);
+  const [sunriseProgress, setSunriseProgress] = useState(0);
 
   // Use Supabase if configured, otherwise fall back to localStorage
   const useSupabase = isSupabaseConfigured();
@@ -35,6 +38,26 @@ export default function Home() {
     getTodaysAttendance,
     getMemberSummary
   } = useSupabase ? supabaseData : localStorageData;
+
+  // Sunrise animation effect (20 seconds)
+  useEffect(() => {
+    const startTime = Date.now();
+    const duration = 10000; // 10 seconds
+    
+    const animate = () => {
+      const elapsed = Date.now() - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      setSunriseProgress(progress);
+      
+      if (progress < 1) {
+        requestAnimationFrame(animate);
+      } else {
+        setTimeout(() => setShowSunriseLoading(false), 3000);
+      }
+    };
+    
+    animate();
+  }, []);
 
   const updateMemberName = async (memberId: string, newName: string) => {
     await updateMemberNameHook(memberId, newName);
@@ -79,30 +102,33 @@ export default function Home() {
     }
   };
 
-  // Show loading state
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 py-8">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="bg-white rounded-lg shadow-lg p-6">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-              <p className="mt-2 text-gray-600">データを読み込み中...</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
+  // Show sunrise loading animation
+  if (showSunriseLoading) {
+    return <SunriseLoadingScreen sunriseProgress={sunriseProgress} />;
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div 
+      className="min-h-screen py-8 relative"
+      style={{
+        backgroundImage: 'url(/loading-icon.png)',
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat',
+        backgroundAttachment: 'fixed'
+      }}
+    >
+      {/* Background overlay for readability */}
+      <div className="absolute inset-0 bg-white/10"></div>
+      
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         <div className="bg-white rounded-lg shadow-lg p-6">
           <div className="flex items-center justify-between mb-8">
-            <h1 className="text-3xl font-bold text-gray-900">
-              朝活出席チェッカー
-            </h1>
+            <div className="flex items-center gap-3">
+              <h1 className="text-3xl font-bold text-gray-900">
+                朝活出席チェッカー
+              </h1>
+            </div>
             <div className="flex items-center gap-4">
               <a
                 href="https://meet.google.com/mni-ioqm-esx?authuser=0&hs=122&ijlm=1749828254853"
@@ -110,11 +136,7 @@ export default function Home() {
                 rel="noopener noreferrer"
                 className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors flex items-center gap-2"
               >
-                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M15,12C15,13.66 13.66,15 12,15C10.34,15 9,13.66 9,12C9,10.34 10.34,9 12,9C13.66,9 15,10.34 15,12Z"/>
-                  <path d="M19.5,12C19.5,16.69 16.19,20.5 12,20.5C7.81,20.5 4.5,16.69 4.5,12C4.5,7.31 7.81,3.5 12,3.5C16.19,3.5 19.5,7.31 19.5,12Z"/>
-                </svg>
-                MorningWinner会に参加
+                MorningWinner Meeting 参加
               </a>
               {useSupabase && (
                 <div className="text-sm text-green-600 font-medium">
