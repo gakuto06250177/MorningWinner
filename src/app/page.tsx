@@ -103,11 +103,25 @@ export default function Home() {
             <h1 className="text-3xl font-bold text-gray-900">
               朝活出席チェッカー
             </h1>
-            {useSupabase && (
-              <div className="text-sm text-green-600 font-medium">
-                ✓ Supabase連携
-              </div>
-            )}
+            <div className="flex items-center gap-4">
+              <a
+                href="https://meet.google.com/mni-ioqm-esx?authuser=0&hs=122&ijlm=1749828254853"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors flex items-center gap-2"
+              >
+                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M15,12C15,13.66 13.66,15 12,15C10.34,15 9,13.66 9,12C9,10.34 10.34,9 12,9C13.66,9 15,10.34 15,12Z"/>
+                  <path d="M19.5,12C19.5,16.69 16.19,20.5 12,20.5C7.81,20.5 4.5,16.69 4.5,12C4.5,7.31 7.81,3.5 12,3.5C16.19,3.5 19.5,7.31 19.5,12Z"/>
+                </svg>
+                MorningWinner会に参加
+              </a>
+              {useSupabase && (
+                <div className="text-sm text-green-600 font-medium">
+                  ✓ Supabase連携
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Error Message */}
