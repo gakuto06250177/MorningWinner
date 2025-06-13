@@ -1,0 +1,9 @@
+{
+  "version": 2,
+  "name": "morning-winner",
+  "framework": "nextjs",
+  "buildCommand": "npm run build",
+  "devCommand": "npm run dev",
+  "installCommand": "npm ci",
+  "outputDirectory": ".next"
+}

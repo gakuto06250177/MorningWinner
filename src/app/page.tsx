@@ -1,103 +1,278 @@
-import Image from "next/image";
+'use client';
+
+import { useState } from 'react';
+import { AttendanceStatus } from '@/types';
+import { useLocalStorageData } from '@/hooks/useLocalStorageData';
+import { useSupabaseData } from '@/hooks/useSupabaseData';
+
+// Check if Supabase is configured
+const isSupabaseConfigured = () => {
+  return !!(
+    process.env.NEXT_PUBLIC_SUPABASE_URL && 
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY &&
+    process.env.NEXT_PUBLIC_SUPABASE_URL !== 'your_supabase_project_url' &&
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY !== 'your_supabase_anon_key'
+  );
+};
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm/6 text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-[family-name:var(--font-geist-mono)] font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  const [selectedDate, setSelectedDate] = useState<string>(
+    new Date().toISOString().split('T')[0]
+  );
+  const [editingMember, setEditingMember] = useState<string | null>(null);
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+  // Use Supabase if configured, otherwise fall back to localStorage
+  const useSupabase = isSupabaseConfigured();
+  const localStorageData = useLocalStorageData();
+  const supabaseData = useSupabaseData();
+  
+  const {
+    members,
+    loading,
+    error,
+    updateMemberName: updateMemberNameHook,
+    recordAttendance: recordAttendanceHook,
+    getTodaysAttendance,
+    getMemberSummary
+  } = useSupabase ? supabaseData : localStorageData;
+
+  const updateMemberName = async (memberId: string, newName: string) => {
+    await updateMemberNameHook(memberId, newName);
+    setEditingMember(null);
+  };
+
+  const recordAttendance = async (memberId: string, status: AttendanceStatus) => {
+    await recordAttendanceHook(memberId, status, selectedDate);
+  };
+
+  const getCurrentAttendance = (memberId: string): AttendanceStatus | null => {
+    return getTodaysAttendance(memberId, selectedDate);
+  };
+
+  const getStatusColor = (status: AttendanceStatus | null) => {
+    switch (status) {
+      case AttendanceStatus.PRESENT:
+        return 'bg-green-100 text-green-800 border-green-200';
+      case AttendanceStatus.LATE:
+        return 'bg-red-100 text-red-800 border-red-200';
+      case AttendanceStatus.ABSENT:
+        return 'bg-gray-100 text-gray-800 border-gray-200';
+      case AttendanceStatus.HOLIDAY:
+        return 'bg-blue-100 text-blue-800 border-blue-200';
+      default:
+        return 'bg-white text-gray-500 border-gray-200';
+    }
+  };
+
+  const getStatusText = (status: AttendanceStatus | null) => {
+    switch (status) {
+      case AttendanceStatus.PRESENT:
+        return '出席';
+      case AttendanceStatus.LATE:
+        return '遅刻';
+      case AttendanceStatus.ABSENT:
+        return '欠席';
+      case AttendanceStatus.HOLIDAY:
+        return '休み';
+      default:
+        return '未記録';
+    }
+  };
+
+  // Show loading state
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 py-8">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="bg-white rounded-lg shadow-lg p-6">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+              <p className="mt-2 text-gray-600">データを読み込み中...</p>
+            </div>
+          </div>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50 py-8">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="bg-white rounded-lg shadow-lg p-6">
+          <div className="flex items-center justify-between mb-8">
+            <h1 className="text-3xl font-bold text-gray-900">
+              朝活出席チェッカー
+            </h1>
+            {useSupabase && (
+              <div className="text-sm text-green-600 font-medium">
+                ✓ Supabase連携
+              </div>
+            )}
+          </div>
+
+          {/* Error Message */}
+          {error && (
+            <div className="bg-red-50 border border-red-200 rounded-md p-4 mb-6">
+              <p className="text-red-800">{error}</p>
+            </div>
+          )}
+
+          {/* Date Selection */}
+          <div className="mb-8">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              記録日
+            </label>
+            <input
+              type="date"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+
+          {/* Daily Attendance */}
+          <div className="mb-8">
+            <h2 className="text-xl font-semibold text-gray-900 mb-4">
+              {selectedDate} の出席状況
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {members.map((member) => {
+                const currentStatus = getCurrentAttendance(member.id);
+                return (
+                  <div key={member.id} className="border rounded-lg p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      {editingMember === member.id ? (
+                        <input
+                          type="text"
+                          defaultValue={member.name}
+                          className="text-lg font-semibold bg-gray-50 border rounded px-2 py-1"
+                          onBlur={(e) => updateMemberName(member.id, e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              updateMemberName(member.id, e.currentTarget.value);
+                            }
+                          }}
+                          autoFocus
+                        />
+                      ) : (
+                        <h3 
+                          className="text-lg font-semibold text-gray-900 cursor-pointer hover:text-blue-600"
+                          onClick={() => setEditingMember(member.id)}
+                        >
+                          {member.name}
+                        </h3>
+                      )}
+                      <div className={`px-3 py-1 rounded-full text-sm border ${getStatusColor(currentStatus)}`}>
+                        {getStatusText(currentStatus)}
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        onClick={() => recordAttendance(member.id, AttendanceStatus.PRESENT)}
+                        className={`px-3 py-2 rounded text-sm font-medium transition-colors ${
+                          currentStatus === AttendanceStatus.PRESENT
+                            ? 'bg-green-600 text-white'
+                            : 'bg-green-100 text-green-700 hover:bg-green-200'
+                        }`}
+                        disabled={loading}
+                      >
+                        出席
+                      </button>
+                      <button
+                        onClick={() => recordAttendance(member.id, AttendanceStatus.LATE)}
+                        className={`px-3 py-2 rounded text-sm font-medium transition-colors ${
+                          currentStatus === AttendanceStatus.LATE
+                            ? 'bg-red-600 text-white'
+                            : 'bg-red-100 text-red-700 hover:bg-red-200'
+                        }`}
+                        disabled={loading}
+                      >
+                        遅刻
+                      </button>
+                      <button
+                        onClick={() => recordAttendance(member.id, AttendanceStatus.HOLIDAY)}
+                        className={`px-3 py-2 rounded text-sm font-medium transition-colors ${
+                          currentStatus === AttendanceStatus.HOLIDAY
+                            ? 'bg-blue-600 text-white'
+                            : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+                        }`}
+                        disabled={loading}
+                      >
+                        休み
+                      </button>
+                      <button
+                        onClick={() => recordAttendance(member.id, AttendanceStatus.ABSENT)}
+                        className={`px-3 py-2 rounded text-sm font-medium transition-colors ${
+                          currentStatus === AttendanceStatus.ABSENT
+                            ? 'bg-gray-600 text-white'
+                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                        }`}
+                        disabled={loading}
+                      >
+                        欠席
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Summary */}
+          <div>
+            <h2 className="text-xl font-semibold text-gray-900 mb-4">
+              個人別サマリー
+            </h2>
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      名前
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      出席回数
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      遅刻回数
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      休み回数
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      ペナルティ金額
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {members.map((member) => {
+                    const summary = getMemberSummary(member);
+                    return (
+                      <tr key={member.id}>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                          {member.name}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-green-600 font-medium">
+                          {summary.presentCount}回
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-red-600 font-medium">
+                          {summary.lateCount}回
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-blue-600 font-medium">
+                          {summary.holidayCount}回
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-red-600">
+                          ¥{summary.totalPenalty.toLocaleString()}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
